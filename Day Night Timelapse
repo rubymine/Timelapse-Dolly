@@ -1,0 +1,52 @@
+boolean continous = false;
+
+int shutterInterval = 400; //in ms
+int shutterLength = 25000; //in ms
+int stepperDelay = 2000;//in microseconds. inverse of speed
+
+//don't worry about this
+int time = 0;
+int shutterPin = 2;
+int stepPin = 12;
+int dirPin = 11;
+
+void setup()
+{
+    pinMode(stepPin, OUTPUT);
+    pinMode(dirPin, OUTPUT);
+    pinMode(shutterPin, OUTPUT);
+    digitalWrite(dirPin, LOW);
+    //Serial.begin(9600);
+}
+
+void loop()
+{
+    int curTime = millis();
+    int potVal = analogRead(A5);
+    potVal = map(potVal, 1023, 0, 0, 1023);
+    //Serial.println(potVal);
+    
+    if(potVal < 20 && curTime > shutterInterval + time){ //stop for pictures
+      digitalWrite(stepPin, HIGH);
+      delay(800);
+      digitalWrite(shutterPin, HIGH);
+      delay(shutterLength);
+      digitalWrite(shutterPin, LOW);
+      delay(4000);
+      time = millis();
+    }
+    
+    int loopStepperDelay = stepperDelay;
+    
+    if(potVal > 20){
+      int delayPercent = round(0.8 * stepperDelay);
+      potVal = map(potVal, 20, 1023, 0, delayPercent);
+      loopStepperDelay =  stepperDelay - potVal;
+    }
+      
+    digitalWrite(stepPin, LOW);   
+    delayMicroseconds(loopStepperDelay);
+    digitalWrite(stepPin, HIGH);   
+    
+    delayMicroseconds(loopStepperDelay);
+}
