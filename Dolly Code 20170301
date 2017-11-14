@@ -1,0 +1,110 @@
+// Dolly Declarations Worked March 2017
+boolean continous = false;
+int shutterInterval = 400; //in ms
+int shutterLength = 2000; //in ms
+int stepperDelay = 60;//in microseconds. inverse of speed was 5
+long time = 0;
+int shutterPin1 = 2;
+int shutterPin2 = 6;
+int stepPin = 12;
+int dirPin = 11;  
+int redPin = 3;
+int coolDown = 1000;
+
+// Debounce Declarations
+const int buttonPin = 9;     // the number of the pushbutton pin
+const int ledPin = 13;       // the number of the LED pin
+// Variables will change:
+int ledState = HIGH;         // the current state of the output pin
+int buttonState;             // the current reading from the input pin
+int lastButtonState = LOW;   // the previous reading from the input pin
+// the following variables are long's because the time, measured in miliseconds,
+// will quickly become a bigger number than can be stored in an int.
+long lastDebounceTime = 0;  // the last time the output pin was toggled
+long debounceDelay = 75;    // the debounce time; increase if the output flickers
+
+void setup()
+{
+  // Dolly Setup
+  pinMode(stepPin, OUTPUT);
+  pinMode(dirPin, OUTPUT);
+  pinMode(shutterPin1, OUTPUT);
+  pinMode(shutterPin2, OUTPUT);
+  //dirPin HIGH  unwinds spool, LOW winds spool
+  digitalWrite(dirPin, LOW);
+  //Serial.begin(9600);
+  
+  // Debounce Setup
+  pinMode(buttonPin, INPUT);
+  pinMode(ledPin, OUTPUT);
+}
+
+void loop()
+{
+  // Debounce Loop
+  // read the state of the switch into a local variable:
+  int reading = digitalRead(buttonPin);
+
+  // check to see if you just pressed the button 
+  // (i.e. the input went from LOW to HIGH),  and you've waited 
+  // long enough since the last press to ignore any noise:  
+
+  // If the switch changed, due to noise or pressing:
+  if (reading != lastButtonState) {
+    // reset the debouncing timer
+    lastDebounceTime = millis();
+  } 
+  
+  if ((millis() - lastDebounceTime) > debounceDelay) {
+    // whatever the reading is at, it's been there for longer
+    // than the debounce delay, so take it as the actual current state:
+    buttonState = reading;
+  }
+  
+  // set the LED using the state of the button:
+  digitalWrite(ledPin, buttonState);
+  digitalWrite(dirPin, buttonState);
+
+  // save the reading.  Next time through the loop,
+  // it'll be the lastButtonState:
+  lastButtonState = reading;
+  
+  // Dolly Loop
+  long curTime = millis();
+  int potVal = analogRead(A5);
+  potVal = map(potVal, 0, 1023, 0, 1023);
+  //Serial.println("pot = " + potVal);
+
+  //This section controls Night Mode aka Step Shoot Step Mode
+  if(potVal < 20 && curTime > shutterInterval + time){
+    digitalWrite(redPin, HIGH);
+    digitalWrite(stepPin, HIGH);
+    delay(800);
+    digitalWrite(redPin, LOW);
+    digitalWrite(shutterPin1, HIGH);
+    digitalWrite(shutterPin2, HIGH);
+    delay(shutterLength);
+    digitalWrite(shutterPin1, LOW);
+    digitalWrite(shutterPin2, LOW);
+    digitalWrite(redPin, HIGH);
+    delay(coolDown);
+    digitalWrite(redPin, LOW);
+    time = millis();
+  }
+
+  int loopStepperDelay = stepperDelay;
+
+  //This section controls Day Mode aka Full Motion.
+  if(potVal > 20){
+    digitalWrite(redPin, HIGH);
+    int delayPercent = round(0.8 * stepperDelay);
+    potVal = map(potVal, 20, 1023, 0, delayPercent);
+    loopStepperDelay =  stepperDelay - potVal;
+    //digitalWrite(redPin, LOW);
+  }
+
+  digitalWrite(stepPin, LOW);   
+  delayMicroseconds(loopStepperDelay);
+  digitalWrite(stepPin, HIGH);   
+  delayMicroseconds(loopStepperDelay);
+}
